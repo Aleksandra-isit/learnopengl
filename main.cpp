@@ -61,9 +61,6 @@ glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
 
 int main()
 {
-	vector<const char*> audioFiles = { "models/everybody.wav",  "models/satisfaction.wav", "models/PSY.wav" };
-
-
 	// glfw: initialize and configure
 	// ------------------------------
 	glfwInit();
@@ -115,22 +112,22 @@ int main()
 
 	// load models of GrandPa
 	// -----------
-	Model ourModel("models/Swing Dancing/Swing Dancing.dae");
-	Animation danceAnimation("models/Swing Dancing/Swing Dancing.dae", &ourModel);
+	Model ourModel("models/Zombie Scream/Zombie Scream.dae");
+	Animation danceAnimation("models/Zombie Scream/Zombie Scream.dae", &ourModel);
 	Animator animator(&danceAnimation);
 
 	//Shrek
-	Model secondModel("models/Dancing/Dancing.dae");
-	Animation secondAnimation("models/Dancing/Dancing.dae", &secondModel);
+	Model secondModel("models/Praying/Praying.dae");
+	Animation secondAnimation("models/Praying/Praying.dae", &secondModel);
 	Animator secondAnimator(&secondAnimation);
 
 	//Granny
-	Model grannyModel("models/Dancing Twerk/Dancing Twerk.dae");
-	Animation grannyAnimation("models/Dancing Twerk/Dancing Twerk.dae", &grannyModel);
+	Model grannyModel("models/Zombie Idle/Zombie Idle.dae");
+	Animation grannyAnimation("models/Zombie Idle/Zombie Idle.dae", &grannyModel);
 	Animator grannyAnimator(&grannyAnimation);
 
-	//CARPETTTTTT !!!!!!!!!!!!!!!!!!!!
-	Model carpet("models/Carpet/carpet.dae");
+	//GROUND !!!!!!!!!!!!!!!!!!!!
+	Model carpet("models/stone-ground-07/carpet (1).dae");
 	Shader carpShader("vs.vs", "fs.frag");
 
 	// Определение начального времени
@@ -164,12 +161,12 @@ int main()
 		double elapsed = cur - backgroundTime; // прошедшее время с послежней засечки
 		if (performanse)
 		{
+			performanse = false; // gлучает следующую позицию
 			animator.UpdateAnimation(deltaTime); //grandPa
 			secondAnimator.UpdateAnimation(deltaTime); //Shrek
 			grannyAnimator.UpdateAnimation(deltaTime); //Granny
 			if (first_sound && play)
 			{
-				result = PlaySoundA(audioFiles[which_song-1], NULL, SND_FILENAME | SND_ASYNC);
 				first_sound = false;
 			}
 			if (elapsed >= back_interval)
@@ -293,17 +290,17 @@ int main()
 		grannyModel.Draw(grannyShader);
 
 
-
+		//GROUND MODEL!!!!!!!!!!!!!!!!!!!!!!!!!!!
 		carpShader.use();
 		carpShader.setMat4("projection", projection);
 		carpShader.setMat4("view", view);
 		glm::mat4 modelC = glm::mat4(1.0f);
-		modelC = glm::translate(modelC, glm::vec3(0.0f, -0.2f, -110.0f)); // translate it down so it's at the center of the scene
+		modelC = glm::translate(modelC, glm::vec3(0.0f, -0.2f, -210.0f)); // translate it down so it's at the center of the scene
 		
 		modelC = glm::rotate(modelC, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-		modelC = glm::rotate(modelC, glm::radians(180.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		//modelC = glm::rotate(modelC, glm::radians(180.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 
-		modelC = glm::scale(modelC, glm::vec3(100.0f, 50.0f, 50.0f));	
+		modelC = glm::scale(modelC, glm::vec3(250.0f, 250.0f, 1.0f));	
 		carpShader.setMat4("model", modelC);
 		carpet.Draw(carpShader);
 
