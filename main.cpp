@@ -22,7 +22,6 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void set_light(Shader shade, glm::vec3 color);
 void processInput(GLFWwindow* window);
-void rash_camera();
 
 // settings
 const unsigned int SCR_WIDTH = 1200;
@@ -44,14 +43,19 @@ bool rash = false;
 bool reset_camera = false;
 
 //dvigats
-bool dvigats = false;
+struct Dvigats
+{
+	bool forward;
+	bool backward;
+	bool left;
+	bool right;
+	bool rot_clock;
+	bool rot_against;
+};
+Dvigats dvigats;
 glm::vec3 init_pose = glm::vec3(-10.0f, -0.2f, -60.0f);
+float grad = 0.0f;
 
-//controll music
-int which_song = 1;
-bool play = false;
-bool first_sound = true;
-BOOL result;
 
 
 // lighting
@@ -61,6 +65,14 @@ glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
 
 int main()
 {
+	dvigats.forward = false;
+	dvigats.backward = false;
+	dvigats.left = false;
+	dvigats.right = false;
+	dvigats.rot_clock = false;
+	dvigats.rot_against = false;
+
+
 	// glfw: initialize and configure
 	// ------------------------------
 	glfwInit();
@@ -106,25 +118,25 @@ int main()
 
 	// build and compile shaders
 	// -------------------------
-	Shader ourShader("anim_model.vs", "anim_model.fs");
-	Shader secondShader("anim_model.vs", "anim_model.fs");
-	Shader grannyShader("anim_model.vs", "anim_model.fs");
+	Shader screamShader("anim_model.vs", "anim_model.fs");
+	Shader prayingShader("anim_model.vs", "anim_model.fs");
+	Shader swatShader("anim_model.vs", "anim_model.fs");
 
-	// load models of GrandPa
+	// load models of Scream Zombie
 	// -----------
-	Model ourModel("models/Zombie Scream/Zombie Scream.dae");
-	Animation danceAnimation("models/Zombie Scream/Zombie Scream.dae", &ourModel);
-	Animator animator(&danceAnimation);
+	Model screamModel("models/Zombie Scream/Zombie Scream.dae");
+	Animation screamAnimation("models/Zombie Scream/Zombie Scream.dae", &screamModel);
+	Animator screamAnimator(&screamAnimation);
 
-	//Shrek
-	Model secondModel("models/Praying/Praying.dae");
-	Animation secondAnimation("models/Praying/Praying.dae", &secondModel);
-	Animator secondAnimator(&secondAnimation);
+	//Praying zombi
+	Model prayingModel("models/Praying/Praying.dae");
+	Animation prayingAnimation("models/Praying/Praying.dae", &prayingModel);
+	Animator prayingAnimator(&prayingAnimation);
 
-	//Granny
-	Model grannyModel("models/Zombie Idle/Zombie Idle.dae");
-	Animation grannyAnimation("models/Zombie Idle/Zombie Idle.dae", &grannyModel);
-	Animator grannyAnimator(&grannyAnimation);
+	//Swat walking
+	Model swatModel("models/Zombie Idle/Zombie Idle.dae");
+	Animation swatAnimation("models/Zombie Idle/Zombie Idle.dae", &swatModel);
+	Animator swatAnimator(&swatAnimation);
 
 	//GROUND !!!!!!!!!!!!!!!!!!!!
 	Model carpet("models/stone-ground-07/carpet (1).dae");
@@ -142,11 +154,15 @@ int main()
 	glm::vec3 randomColor3 = glm::vec3(1.0f); // до дискотеки свет нормальный
 
 
+	glClearColor(0.059, 0, 0.522, 1.0);
+	screamAnimator.UpdateAnimation(0.079); //scream
+	prayingAnimator.UpdateAnimation(6.1); //praying
+	int k = 0;
+
 	// render loop
 	// -----------
 	while (!glfwWindowShouldClose(window))
 	{
-
 		// per-frame time logic
 		// --------------------
 
@@ -157,29 +173,13 @@ int main()
 		// input
 		// -----
 		processInput(window);
-		double cur = glfwGetTime(); // текущее время для смены цвета заднего фона
-		double elapsed = cur - backgroundTime; // прошедшее время с послежней засечки
+		swatAnimator.UpdateAnimation(deltaTime); //SWAT
+
 		if (performanse)
 		{
-			performanse = false; // gлучает следующую позицию
-			animator.UpdateAnimation(deltaTime); //grandPa
-			secondAnimator.UpdateAnimation(deltaTime); //Shrek
-			grannyAnimator.UpdateAnimation(deltaTime); //Granny
-			if (first_sound && play)
-			{
-				first_sound = false;
-			}
-			if (elapsed >= back_interval)
-			{
-				glm::vec3 back_col = glm::linearRand(glm::vec3(0.1f), glm::vec3(0.9f));
-				glClearColor(back_col.x, back_col.y, back_col.z, 1.0f);
-				backgroundTime = cur;
-				back_interval = glm::linearRand(0.1f, 1.5f);
-			}
-		}
-		else
-		{
-			glClearColor(0.424f, 0.0f, 0.71f, 1.0f);
+			performanse = false; // получает следующую позицию
+			screamAnimator.UpdateAnimation(deltaTime); //scream
+			prayingAnimator.UpdateAnimation(deltaTime); //praying
 		}
 
 		// render
@@ -187,107 +187,107 @@ int main()
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 
-		double currentTime = glfwGetTime(); // Получение текущего времени
-		double elapsedTime = currentTime - startTime; // Вычисление прошедшего времени с последнего засечки
-		if (elapsedTime >= interval)
-		{
-			randomColor = glm::linearRand(glm::vec3(0.1f), glm::vec3(1.0f));
-			randomColor2 = glm::linearRand(glm::vec3(0.1f), glm::vec3(1.0f));
-			randomColor3 = glm::linearRand(glm::vec3(0.1f), glm::vec3(1.0f));
-			// Обновление начального времени
-			startTime = currentTime;
-			interval = glm::linearRand(0.1f, 1.5f);
-		}
-		if (rash)
-		{
-			rash_camera();
-		}
-		else if (reset_camera)
-		{
-			camera.Position = glm::vec3(0.0f, 25.0f, 60.0f);
-			reset_camera = false;
-		}
-		if (!performanse)
-		{
-			randomColor = glm::vec3(1.0f);
-			randomColor2 = glm::vec3(1.0f);
-			randomColor3 = glm::vec3(1.0f);
-		}
 
 		// don't forget to enable shader before setting uniforms
-		ourShader.use();
-		secondShader.use();
-		grannyShader.use();
+		screamShader.use();
+		prayingShader.use();
+		swatShader.use();
 
 		lightPos.x = 1.0f + sin(glfwGetTime()) * 60.0f;
 		lightPos.y = cos(glfwGetTime() / 2.0f) * 12.0f;
 
-		// view/projection transformations GRANDPA
+		// SCREAM ZOMBI
 		// --------------------------------------------------------------------------------------
 		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 1.0f, 1000.0f);
 		glm::mat4 view = camera.GetViewMatrix();
-		//GrandPa
-		ourShader.setMat4("projection", projection); 
-		ourShader.setMat4("view", view); 
+		screamShader.setMat4("projection", projection); 
+		screamShader.setMat4("view", view); 
 
-		//GrandPa
-		auto transforms = animator.GetFinalBoneMatrices();
+		auto transforms = screamAnimator.GetFinalBoneMatrices();
 		for (int i = 0; i < transforms.size(); ++i)
-			ourShader.setMat4("finalBonesMatrices[" + std::to_string(i) + "]", transforms[i]);
+			screamShader.setMat4("finalBonesMatrices[" + std::to_string(i) + "]", transforms[i]);
 
 		// render the loaded model
 		// -----------------------------------------------------------------------------------
 		glm::mat4 model = glm::mat4(1.0f);
-		model = glm::translate(model, glm::vec3(-42.0f, -0.2f, -60.0f)); // translate it down so it's at the center of the scene
+		model = glm::translate(model, glm::vec3(-42.0f, -0.2f, -210.0f)); // translate it down so it's at the center of the scene
 		model = glm::scale(model, glm::vec3(0.22f, 0.22f, 0.22f));	// it's a bit too big for our scene, so scale it down
-		ourShader.setMat4("model", model);
+		screamShader.setMat4("model", model);
 
-		set_light(ourShader, randomColor);
-		ourModel.Draw(ourShader);
+		set_light(screamShader, randomColor);
+		screamModel.Draw(screamShader);
 
 
 
-		// view/projection transformations SHREK!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+		//  PRAYING ZOMBI !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 		// --------------------------------------------------------------------------------------
-		secondShader.setMat4("projection", projection);
-		secondShader.setMat4("view", view);
+		prayingShader.setMat4("projection", projection);
+		prayingShader.setMat4("view", view);
 
-		auto transformsS = secondAnimator.GetFinalBoneMatrices();
+		auto transformsS = prayingAnimator.GetFinalBoneMatrices();
 		for (int i = 0; i < transformsS.size(); ++i)
-			secondShader.setMat4("finalBonesMatrices[" + std::to_string(i) + "]", transformsS[i]);
+			prayingShader.setMat4("finalBonesMatrices[" + std::to_string(i) + "]", transformsS[i]);
 
 		// render the loaded model
 		// -----------------------------------------------------------------------------------
 		glm::mat4 modelS = glm::mat4(1.0f);
-		modelS = glm::translate(modelS, glm::vec3(30.0f, -0.2f, -60.0f)); // translate it down so it's at the center of the scene
-		modelS = glm::scale(modelS, glm::vec3(0.35f, 0.35f, 0.35f));	// it's a bit too big for our scene, so scale it down
-		secondShader.setMat4("model", modelS);
+		modelS = glm::translate(modelS, glm::vec3(30.0f, -0.2f, -210.0f)); // translate it down so it's at the center of the scene
+		modelS = glm::scale(modelS, glm::vec3(0.22f, 0.22f, 0.22f));	// it's a bit too big for our scene, so scale it down
+		prayingShader.setMat4("model", modelS);
 
-		set_light(secondShader, randomColor2);
-		secondModel.Draw(secondShader);
+		set_light(prayingShader, randomColor2);
+		prayingModel.Draw(prayingShader);
 
-		// !!!!!!!!!!!!!!!!!!!!!!!!!!! view/projection transformations GRANNY !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+
+		// !!!!!!!!!!!!!!!!!!!!!!!!!!! SWAT!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 		// --------------------------------------------------------------------------------------
-		grannyShader.setMat4("projection", projection);
-		grannyShader.setMat4("view", view);
+		swatShader.setMat4("projection", projection);
+		swatShader.setMat4("view", view);
 
-		auto transformsG = grannyAnimator.GetFinalBoneMatrices();
+		auto transformsG = swatAnimator.GetFinalBoneMatrices();
 		for (int i = 0; i < transformsG.size(); ++i)
-			grannyShader.setMat4("finalBonesMatrices[" + std::to_string(i) + "]", transformsG[i]);
+			swatShader.setMat4("finalBonesMatrices[" + std::to_string(i) + "]", transformsG[i]);
 
 		// render the loaded model
 		// -----------------------------------------------------------------------------------
 		glm::mat4 modelG = glm::mat4(1.0f);
-		if (dvigats)
+		if (dvigats.forward)
 		{
-			init_pose.z -= 0.01;
+			init_pose.z -= 0.1;
 		}
-		modelG = glm::translate(modelG, /*glm::vec3(-10.0f, -0.2f, -60.0f)*/init_pose); // translate it down so it's at the center of the scene
-		modelG = glm::scale(modelG, glm::vec3(0.3f, 0.3f, 0.3f));	// it's a bit too big for our scene, so scale it down
-		grannyShader.setMat4("model", modelG);
+		else if (dvigats.backward)
+		{
+			init_pose.z += 0.1;
+		}
+		if (dvigats.left)
+		{
+			init_pose.x -= 0.1;
+		}
+		else if (dvigats.right)
+		{
+			init_pose.x += 0.1;
+		}
 
-		set_light(grannyShader, randomColor3);
-		grannyModel.Draw(grannyShader);
+
+		modelG = glm::translate(modelG, init_pose); // translate it down so it's at the center of the scene
+
+		if (dvigats.rot_clock)
+		{
+			grad += 1.0f;
+		}
+		else if (dvigats.rot_against)
+		{
+			grad -= 1.0f;
+		}
+		modelG = glm::rotate(modelG, glm::radians(grad), glm::vec3(0.0f, 1.0f, 0.0f));
+
+		modelG = glm::scale(modelG, glm::vec3(0.3f, 0.3f, 0.3f));
+		swatShader.setMat4("model", modelG);
+
+		set_light(swatShader, randomColor3);
+		swatModel.Draw(swatShader);
 
 
 		//GROUND MODEL!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -329,48 +329,64 @@ void processInput(GLFWwindow* window)
 	if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS)
 	{
 		performanse = !performanse;
-		if (performanse) camera.Position = glm::vec3(0.0f, 25.0f, 60.0f);
-		play = !play;
-		if (play == false)
-		{
-			first_sound = true;
-			result = PlaySoundA(NULL, NULL, 0);
-		}
 		Sleep(200);
 	}
-	if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
-	{
-		which_song = 1;
-		Sleep(200);
-	}
-	if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
-	{
-		which_song = 2;
-		Sleep(200);
-	}
-	if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS)
-	{
-		which_song = 3;
-		Sleep(200);
-	}
-	if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS)
-	{
-		rash = !rash;
-		if (rash == false)
-		{
-			reset_camera = true;
-		}
-		Sleep(200);
-	}
+	//forward
 	if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
 	{
-		dvigats = true;
-		//Sleep(200);
+		dvigats.forward = true;
 	}
 	else
 	{
-		dvigats = false;
+		dvigats.forward = false;
 	}
+	//backward
+	if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+	{
+		dvigats.backward = true;
+	}
+	else
+	{
+		dvigats.backward = false;
+	}
+	//left
+	if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+	{
+		dvigats.left = true;
+	}
+	else
+	{
+		dvigats.left = false;
+	}
+	//right
+	if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+	{
+		dvigats.right = true;
+	}
+	else
+	{
+		dvigats.right = false;
+	}
+	//rotate clockwice
+	if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS)
+	{
+		dvigats.rot_clock = true;
+	}
+	else
+	{
+		dvigats.rot_clock = false;
+	}
+	//rotate against clockwise
+	if (glfwGetKey(window, GLFW_KEY_K) == GLFW_PRESS)
+	{
+		dvigats.rot_against = true;
+	}
+	else
+	{
+		dvigats.rot_against = false;
+	}
+
+
 
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
 		camera.ProcessKeyboard(FORWARD, deltaTime);
@@ -380,25 +396,6 @@ void processInput(GLFWwindow* window)
 		camera.ProcessKeyboard(LEFT, deltaTime);
 	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
 		camera.ProcessKeyboard(RIGHT, deltaTime);
-}
-
-void rash_camera()
-{
-	float shake_amount = glm::linearRand(0.1f, 5.5f);
-	glm::vec3 shake_direction = glm::vec3(glm::linearRand(-shake_amount, shake_amount),
-		glm::linearRand(0.1f, 0.6f),
-		glm::linearRand(-glm::linearRand(0.1f, 1.5f), glm::linearRand(0.1f, 1.5f)));
-
-	if (camera.Position.x > 15.0f) camera.Position.x -= 10.0f;
-	if (camera.Position.x < -20.0f) camera.Position.x += 15.0f;
-
-	if (camera.Position.y > 0.6f) camera.Position.y -= 0.3f;
-	if (camera.Position.y < 0.1f) camera.Position.y += 0.2f;
-
-	if (camera.Position.z > 65.0f) camera.Position.z -= 5.0f;
-	if (camera.Position.z < 55.0f) camera.Position.z += 5.0f;
-
-	camera.Position += shake_direction;
 }
 
 
