@@ -36,11 +36,8 @@ bool firstMouse = true;
 // timing
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
-
-// controll filming animation
-bool performanse = false;
-bool rash = false;
-bool reset_camera = false;
+float checkTime = 0.0f; // зомби начинает умирать
+float stopDie = 0.0f; // зомби умер
 
 //dvigats
 struct Dvigats
@@ -53,9 +50,11 @@ struct Dvigats
 	bool rot_against;
 };
 Dvigats dvigats;
-glm::vec3 init_pose = glm::vec3(-10.0f, -0.2f, -60.0f);
+glm::vec3 init_pose = glm::vec3(-10.0f, -0.2f, -160.0f);
 float grad = 0.0f;
-
+bool can = true;
+int fight = 0;
+bool stop = false;
 
 
 // lighting
@@ -86,7 +85,7 @@ int main()
 
 	// glfw window creation
 	// --------------------
-	GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "DISCOTEKA VEKA", NULL, NULL);
+	GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "ZOMBI", NULL, NULL);
 	if (window == NULL)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
@@ -119,14 +118,22 @@ int main()
 	// build and compile shaders
 	// -------------------------
 	Shader screamShader("anim_model.vs", "anim_model.fs");
+	Shader dyingShader("anim_model.vs", "anim_model.fs");
 	Shader prayingShader("anim_model.vs", "anim_model.fs");
 	Shader swatShader("anim_model.vs", "anim_model.fs");
+	Shader fightShader("anim_model.vs", "anim_model.fs");
 
 	// load models of Scream Zombie
 	// -----------
 	Model screamModel("models/Zombie Scream/Zombie Scream.dae");
 	Animation screamAnimation("models/Zombie Scream/Zombie Scream.dae", &screamModel);
 	Animator screamAnimator(&screamAnimation);
+	// load models of Dying Zombie
+	// -----------
+	Model dyingModel("models/Zombie Dying/Zombie Dying.dae");
+	Animation dyingAnimation("models/Zombie Dying/Zombie Dying.dae", &dyingModel);
+	Animator dyingAnimator(&dyingAnimation);
+
 
 	//Praying zombi
 	Model prayingModel("models/Praying/Praying.dae");
@@ -137,6 +144,11 @@ int main()
 	Model swatModel("models/Zombie Idle/Zombie Idle.dae");
 	Animation swatAnimation("models/Zombie Idle/Zombie Idle.dae", &swatModel);
 	Animator swatAnimator(&swatAnimation);
+	//Swat fighting
+	Model fightModel("models/Chapa 2/Chapa 2.dae");
+	Animation fightAnimation("models/Chapa 2/Chapa 2.dae", &fightModel);
+	Animator fightAnimator(&fightAnimation);
+
 
 	//GROUND !!!!!!!!!!!!!!!!!!!!
 	Model carpet("models/stone-ground-07/carpet (1).dae");
@@ -149,14 +161,15 @@ int main()
 	double back_interval = 2.0f;
 
 
-	glm::vec3 randomColor = glm::vec3(1.0f); // до дискотеки свет нормальный
-	glm::vec3 randomColor2 = glm::vec3(1.0f); // до дискотеки свет нормальный
-	glm::vec3 randomColor3 = glm::vec3(1.0f); // до дискотеки свет нормальный
+	glm::vec3 swatColor = glm::vec3(1.0f); 
+	glm::vec3 prayerColor = glm::vec3(1.0f); 
+	glm::vec3 screamColor = glm::vec3(1.0f);
+
 
 
 	glClearColor(0.059, 0, 0.522, 1.0);
-	screamAnimator.UpdateAnimation(0.079); //scream
-	prayingAnimator.UpdateAnimation(6.1); //praying
+	screamAnimator.UpdateAnimation(0.079); //scream START POSITION
+	prayingAnimator.UpdateAnimation(6.1); //praying START POSITION
 	int k = 0;
 
 	// render loop
@@ -175,11 +188,43 @@ int main()
 		processInput(window);
 		swatAnimator.UpdateAnimation(deltaTime); //SWAT
 
-		if (performanse)
+		if (init_pose.z <=  -150.0f)
 		{
-			performanse = false; // получает следующую позицию
-			screamAnimator.UpdateAnimation(deltaTime); //scream
+			prayerColor = glm::vec3(1, 0.29, 0.29);
+			screamColor = glm::vec3(1, 0.29, 0.29);
 			prayingAnimator.UpdateAnimation(deltaTime); //praying
+			if (init_pose.x <= -35.0f && init_pose.z >= -180.0f && init_pose.z <= -170.0f)
+			{
+				checkTime += deltaTime;
+				if (checkTime >= 3 && !stop)
+				{
+					fight += 1;
+					can = false;
+					//init_pose.z += 5.0f;
+					dyingAnimator.UpdateAnimation(deltaTime);
+					stopDie += deltaTime;
+					if (stopDie >= 2.7)
+					{
+						stop = 1;
+					}
+				}
+				if (checkTime < 3)
+				{
+					fight = 1;
+					fightAnimator.UpdateAnimation(deltaTime);
+				}
+			}
+			else
+			{
+				if (stop)
+				{
+					//dyingAnimator.UpdateAnimation(3.6777);
+				}
+				else
+				{
+					screamAnimator.UpdateAnimation(deltaTime); //scream
+				}
+			}
 		}
 
 		// render
@@ -196,26 +241,54 @@ int main()
 		lightPos.x = 1.0f + sin(glfwGetTime()) * 60.0f;
 		lightPos.y = cos(glfwGetTime() / 2.0f) * 12.0f;
 
-		// SCREAM ZOMBI
-		// --------------------------------------------------------------------------------------
 		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 1.0f, 1000.0f);
 		glm::mat4 view = camera.GetViewMatrix();
-		screamShader.setMat4("projection", projection); 
-		screamShader.setMat4("view", view); 
 
-		auto transforms = screamAnimator.GetFinalBoneMatrices();
-		for (int i = 0; i < transforms.size(); ++i)
-			screamShader.setMat4("finalBonesMatrices[" + std::to_string(i) + "]", transforms[i]);
 
-		// render the loaded model
-		// -----------------------------------------------------------------------------------
-		glm::mat4 model = glm::mat4(1.0f);
-		model = glm::translate(model, glm::vec3(-42.0f, -0.2f, -210.0f)); // translate it down so it's at the center of the scene
-		model = glm::scale(model, glm::vec3(0.22f, 0.22f, 0.22f));	// it's a bit too big for our scene, so scale it down
-		screamShader.setMat4("model", model);
+		if (can)
+		{
+			// SCREAM ZOMBI
+			// --------------------------------------------------------------------------------------
+			screamShader.setMat4("projection", projection);
+			screamShader.setMat4("view", view);
 
-		set_light(screamShader, randomColor);
-		screamModel.Draw(screamShader);
+			auto transforms = screamAnimator.GetFinalBoneMatrices();
+			for (int i = 0; i < transforms.size(); ++i)
+				screamShader.setMat4("finalBonesMatrices[" + std::to_string(i) + "]", transforms[i]);
+
+			// render the SCREAM model
+			// -----------------------------------------------------------------------------------
+			glm::mat4 model = glm::mat4(1.0f);
+			model = glm::translate(model, glm::vec3(-42.0f, -0.2f, -210.0f)); // translate it down so it's at the center of the scene
+			model = glm::scale(model, glm::vec3(0.22f, 0.22f, 0.22f));	// it's a bit too big for our scene, so scale it down
+			screamShader.setMat4("model", model);
+
+			set_light(screamShader, screamColor);
+			screamModel.Draw(screamShader);
+
+		}
+		else
+		{
+			// SCREAM ZOMBI
+			// --------------------------------------------------------------------------------------
+			dyingShader.setMat4("projection", projection);
+			dyingShader.setMat4("view", view);
+
+			auto transforms = dyingAnimator.GetFinalBoneMatrices();
+			for (int i = 0; i < transforms.size(); ++i)
+				dyingShader.setMat4("finalBonesMatrices[" + std::to_string(i) + "]", transforms[i]);
+
+			// render the SCREAM model
+			// -----------------------------------------------------------------------------------
+			glm::mat4 modelX = glm::mat4(1.0f);
+			modelX = glm::translate(modelX, glm::vec3(-42.0f, -0.2f, -210.0f)); // translate it down so it's at the center of the scene
+			modelX = glm::scale(modelX, glm::vec3(0.22f, 0.22f, 0.22f));	// it's a bit too big for our scene, so scale it down
+			dyingShader.setMat4("model", modelX);
+
+			screamColor = glm::vec3(0.667, 0.941, 0.749);
+			set_light(dyingShader, screamColor);
+			screamModel.Draw(dyingShader);
+		}
 
 
 
@@ -235,7 +308,7 @@ int main()
 		modelS = glm::scale(modelS, glm::vec3(0.22f, 0.22f, 0.22f));	// it's a bit too big for our scene, so scale it down
 		prayingShader.setMat4("model", modelS);
 
-		set_light(prayingShader, randomColor2);
+		set_light(prayingShader, prayerColor);
 		prayingModel.Draw(prayingShader);
 
 
@@ -243,51 +316,77 @@ int main()
 
 		// !!!!!!!!!!!!!!!!!!!!!!!!!!! SWAT!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 		// --------------------------------------------------------------------------------------
-		swatShader.setMat4("projection", projection);
-		swatShader.setMat4("view", view);
-
-		auto transformsG = swatAnimator.GetFinalBoneMatrices();
-		for (int i = 0; i < transformsG.size(); ++i)
-			swatShader.setMat4("finalBonesMatrices[" + std::to_string(i) + "]", transformsG[i]);
-
-		// render the loaded model
-		// -----------------------------------------------------------------------------------
-		glm::mat4 modelG = glm::mat4(1.0f);
-		if (dvigats.forward)
+		if (fight != 1)
 		{
-			init_pose.z -= 0.1;
-		}
-		else if (dvigats.backward)
-		{
-			init_pose.z += 0.1;
-		}
-		if (dvigats.left)
-		{
-			init_pose.x -= 0.1;
-		}
-		else if (dvigats.right)
-		{
-			init_pose.x += 0.1;
-		}
+			swatShader.setMat4("projection", projection);
+			swatShader.setMat4("view", view);
+
+			auto transformsG = swatAnimator.GetFinalBoneMatrices();
+			for (int i = 0; i < transformsG.size(); ++i)
+				swatShader.setMat4("finalBonesMatrices[" + std::to_string(i) + "]", transformsG[i]);
+
+			// render the loaded model
+			// -----------------------------------------------------------------------------------
+			glm::mat4 modelG = glm::mat4(1.0f);
+			if (dvigats.forward)
+			{
+				init_pose.z -= 0.2;
+			}
+			else if (dvigats.backward)
+			{
+				init_pose.z += 0.2;
+			}
+			if (dvigats.left)
+			{
+				init_pose.x -= 0.2;
+			}
+			else if (dvigats.right)
+			{
+				init_pose.x += 0.2;
+			}
 
 
-		modelG = glm::translate(modelG, init_pose); // translate it down so it's at the center of the scene
+			modelG = glm::translate(modelG, init_pose); // translate it down so it's at the center of the scene
 
-		if (dvigats.rot_clock)
-		{
-			grad += 1.0f;
+			if (dvigats.rot_clock)
+			{
+				grad += 2.0f;
+			}
+			else if (dvigats.rot_against)
+			{
+				grad -= 2.0f;
+			}
+			modelG = glm::rotate(modelG, glm::radians(grad), glm::vec3(0.0f, 1.0f, 0.0f));
+
+			modelG = glm::scale(modelG, glm::vec3(0.3f, 0.3f, 0.3f));
+			swatShader.setMat4("model", modelG);
+
+			set_light(swatShader, swatColor);
+			swatModel.Draw(swatShader);
 		}
-		else if (dvigats.rot_against)
+		else
 		{
-			grad -= 1.0f;
+			fightShader.setMat4("projection", projection);
+			fightShader.setMat4("view", view);
+
+			auto transformsF = fightAnimator.GetFinalBoneMatrices();
+			for (int i = 0; i < transformsF.size(); ++i)
+				fightShader.setMat4("finalBonesMatrices[" + std::to_string(i) + "]", transformsF[i]);
+
+
+			// render the loaded model
+			// -----------------------------------------------------------------------------------
+			glm::mat4 modelF = glm::mat4(1.0f);
+			modelF = glm::translate(modelF, init_pose); // translate it down so it's at the center of the scene
+
+			modelF = glm::rotate(modelF, glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+
+			modelF = glm::scale(modelF, glm::vec3(0.22f, 0.22f, 0.22f));	// it's a bit too big for our scene, so scale it down
+			fightShader.setMat4("model", modelF);
+
+			set_light(fightShader, swatColor);
+			fightModel.Draw(fightShader);
 		}
-		modelG = glm::rotate(modelG, glm::radians(grad), glm::vec3(0.0f, 1.0f, 0.0f));
-
-		modelG = glm::scale(modelG, glm::vec3(0.3f, 0.3f, 0.3f));
-		swatShader.setMat4("model", modelG);
-
-		set_light(swatShader, randomColor3);
-		swatModel.Draw(swatShader);
 
 
 		//GROUND MODEL!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -328,11 +427,11 @@ void processInput(GLFWwindow* window)
 
 	if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS)
 	{
-		performanse = !performanse;
+		fight = 1;
 		Sleep(200);
 	}
 	//forward
-	if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
 	{
 		dvigats.forward = true;
 	}
@@ -341,7 +440,7 @@ void processInput(GLFWwindow* window)
 		dvigats.forward = false;
 	}
 	//backward
-	if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
 	{
 		dvigats.backward = true;
 	}
@@ -350,7 +449,7 @@ void processInput(GLFWwindow* window)
 		dvigats.backward = false;
 	}
 	//left
-	if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
 	{
 		dvigats.left = true;
 	}
@@ -359,7 +458,7 @@ void processInput(GLFWwindow* window)
 		dvigats.left = false;
 	}
 	//right
-	if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
 	{
 		dvigats.right = true;
 	}
@@ -388,13 +487,13 @@ void processInput(GLFWwindow* window)
 
 
 
-	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+	if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
 		camera.ProcessKeyboard(FORWARD, deltaTime);
-	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+	if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
 		camera.ProcessKeyboard(BACKWARD, deltaTime);
-	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+	if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
 		camera.ProcessKeyboard(LEFT, deltaTime);
-	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+	if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
 		camera.ProcessKeyboard(RIGHT, deltaTime);
 }
 
