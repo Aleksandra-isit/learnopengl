@@ -50,16 +50,17 @@ struct Dvigats
 	bool rot_against;
 };
 Dvigats dvigats;
-glm::vec3 init_pose = glm::vec3(-10.0f, -0.2f, -160.0f);
+glm::vec3 init_pose = glm::vec3(-10.0f, -0.2f, -100.0f);
 float grad = 0.0f;
 bool can = true;
 int fight = 0;
 bool stop = false;
+bool healthy = false;
+bool swat = false;
 
 
 // lighting
 glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
-//glm::vec3 lightPos(1.2f, 10.0f, -80.0f);
 
 
 int main()
@@ -122,6 +123,8 @@ int main()
 	Shader prayingShader("anim_model.vs", "anim_model.fs");
 	Shader swatShader("anim_model.vs", "anim_model.fs");
 	Shader fightShader("anim_model.vs", "anim_model.fs");
+	Shader healthyShader("anim_model.vs", "anim_model.fs");
+
 
 	// load models of Scream Zombie
 	// -----------
@@ -139,6 +142,11 @@ int main()
 	Model prayingModel("models/Praying/Praying.dae");
 	Animation prayingAnimation("models/Praying/Praying.dae", &prayingModel);
 	Animator prayingAnimator(&prayingAnimation);
+	//Healthy zombi
+	Model healthyModel("models/Joyful Jump/Joyful Jump.dae");
+	Animation healthyAnimation("models/Joyful Jump/Joyful Jump.dae", &healthyModel);
+	Animator healthyAnimator(&healthyAnimation);
+
 
 	//Swat walking
 	Model swatModel("models/Zombie Idle/Zombie Idle.dae");
@@ -153,6 +161,10 @@ int main()
 	//GROUND !!!!!!!!!!!!!!!!!!!!
 	Model carpet("models/stone-ground-07/carpet (1).dae");
 	Shader carpShader("vs.vs", "fs.frag");
+	//BACKGROUND !!!!!!!!!!!!!!!!!!!!
+	Model bck("models/Bck/bck.dae");
+	Shader bckShader("vs.vs", "fs.frag");
+
 
 	// Определение начального времени
 	double startTime = glfwGetTime();
@@ -192,7 +204,7 @@ int main()
 		{
 			prayerColor = glm::vec3(1, 0.29, 0.29);
 			screamColor = glm::vec3(1, 0.29, 0.29);
-			prayingAnimator.UpdateAnimation(deltaTime); //praying
+			//prayingAnimator.UpdateAnimation(deltaTime); //praying
 			if (init_pose.x <= -35.0f && init_pose.z >= -180.0f && init_pose.z <= -170.0f)
 			{
 				checkTime += deltaTime;
@@ -216,16 +228,20 @@ int main()
 			}
 			else
 			{
-				if (stop)
-				{
-					//dyingAnimator.UpdateAnimation(3.6777);
-				}
-				else
+				if (!stop)
 				{
 					screamAnimator.UpdateAnimation(deltaTime); //scream
 				}
+				prayingAnimator.UpdateAnimation(deltaTime);
 			}
+			if (healthy)
+			{
+				healthyAnimator.UpdateAnimation(deltaTime);
+			}
+
 		}
+
+		
 
 		// render
 		// ------
@@ -294,22 +310,44 @@ int main()
 
 		//  PRAYING ZOMBI !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 		// --------------------------------------------------------------------------------------
-		prayingShader.setMat4("projection", projection);
-		prayingShader.setMat4("view", view);
+		if (!healthy)
+		{
+			prayingShader.setMat4("projection", projection);
+			prayingShader.setMat4("view", view);
 
-		auto transformsS = prayingAnimator.GetFinalBoneMatrices();
-		for (int i = 0; i < transformsS.size(); ++i)
-			prayingShader.setMat4("finalBonesMatrices[" + std::to_string(i) + "]", transformsS[i]);
+			auto transformsS = prayingAnimator.GetFinalBoneMatrices();
+			for (int i = 0; i < transformsS.size(); ++i)
+				prayingShader.setMat4("finalBonesMatrices[" + std::to_string(i) + "]", transformsS[i]);
 
-		// render the loaded model
-		// -----------------------------------------------------------------------------------
-		glm::mat4 modelS = glm::mat4(1.0f);
-		modelS = glm::translate(modelS, glm::vec3(30.0f, -0.2f, -210.0f)); // translate it down so it's at the center of the scene
-		modelS = glm::scale(modelS, glm::vec3(0.22f, 0.22f, 0.22f));	// it's a bit too big for our scene, so scale it down
-		prayingShader.setMat4("model", modelS);
+			// render the loaded model
+			// -----------------------------------------------------------------------------------
+			glm::mat4 modelS = glm::mat4(1.0f);
+			modelS = glm::translate(modelS, glm::vec3(30.0f, -0.2f, -210.0f)); // translate it down so it's at the center of the scene
+			modelS = glm::scale(modelS, glm::vec3(0.22f, 0.22f, 0.22f));	// it's a bit too big for our scene, so scale it down
+			prayingShader.setMat4("model", modelS);
 
-		set_light(prayingShader, prayerColor);
-		prayingModel.Draw(prayingShader);
+			set_light(prayingShader, prayerColor);
+			prayingModel.Draw(prayingShader);
+		}
+		else
+		{
+			healthyShader.setMat4("projection", projection);
+			healthyShader.setMat4("view", view);
+
+			auto transformsS = healthyAnimator.GetFinalBoneMatrices();
+			for (int i = 0; i < transformsS.size(); ++i)
+				healthyShader.setMat4("finalBonesMatrices[" + std::to_string(i) + "]", transformsS[i]);
+
+			// render the loaded model
+			// -----------------------------------------------------------------------------------
+			glm::mat4 modelS = glm::mat4(1.0f);
+			modelS = glm::translate(modelS, glm::vec3(30.0f, -0.2f, -210.0f)); // translate it down so it's at the center of the scene
+			modelS = glm::scale(modelS, glm::vec3(0.3f, 0.3f, 0.3f));	// it's a bit too big for our scene, so scale it down
+			healthyShader.setMat4("model", modelS);
+
+			set_light(healthyShader, glm::vec3(1.0f));
+			healthyModel.Draw(healthyShader);
+		}
 
 
 
@@ -330,19 +368,19 @@ int main()
 			glm::mat4 modelG = glm::mat4(1.0f);
 			if (dvigats.forward)
 			{
-				init_pose.z -= 0.2;
+				init_pose.z -= 0.3;
 			}
 			else if (dvigats.backward)
 			{
-				init_pose.z += 0.2;
+				init_pose.z += 0.3;
 			}
 			if (dvigats.left)
 			{
-				init_pose.x -= 0.2;
+				init_pose.x -= 0.3;
 			}
 			else if (dvigats.right)
 			{
-				init_pose.x += 0.2;
+				init_pose.x += 0.3;
 			}
 
 
@@ -403,6 +441,17 @@ int main()
 		carpShader.setMat4("model", modelC);
 		carpet.Draw(carpShader);
 
+		//BACKGROUND MODEL!!!!!!!!!!!!!!!!!!!!!!!!!!!
+		bckShader.use();
+		bckShader.setMat4("projection", projection);
+		bckShader.setMat4("view", view);
+		glm::mat4 modelBck = glm::mat4(1.0f);
+		modelBck = glm::translate(modelBck, glm::vec3(-20.0f, -0.2f, -270.0f)); // translate it down so it's at the center of the scene
+
+		modelBck = glm::scale(modelBck, glm::vec3(250.0f, 250.0f, 1.0f));
+		bckShader.setMat4("model", modelBck);
+		bck.Draw(bckShader);
+
 
 		// glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
 		// -------------------------------------------------------------------------------
@@ -428,6 +477,11 @@ void processInput(GLFWwindow* window)
 	if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS)
 	{
 		fight = 1;
+		Sleep(200);
+	}
+	if (glfwGetKey(window, GLFW_KEY_H) == GLFW_PRESS)
+	{
+		healthy = true;
 		Sleep(200);
 	}
 	//forward
